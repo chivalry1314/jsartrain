@@ -82,33 +82,33 @@ export default function MusicSearch({ onSelectSong, isVisible, onClose }: MusicS
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 glass-panel rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+      <div className="relative w-full max-w-lg sm:max-h-[85vh] h-[92vh] sm:h-auto glass-panel rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2">
             <Music className="w-5 h-5 text-teal-400" />
             <h3 className="text-base font-medium text-slate-100">在线选歌</h3>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-400 hover:text-slate-200 w-8 h-8">
-            <X className="w-4 h-4" />
+          <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-400 hover:text-slate-200 w-10 h-10">
+            <X className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Search */}
-        <div className="px-5 py-3 border-b border-white/10">
+        <div className="px-4 sm:px-5 py-3 border-b border-white/10 shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
             <Input
               ref={searchInputRef}
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               placeholder="搜索歌曲、歌手..."
-              className="pl-10 pr-10 bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-500 focus:border-teal-500/50 focus:ring-teal-500/20"
+              className="pl-10 pr-12 h-11 text-base bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-500 focus:border-teal-500/50 focus:ring-teal-500/20"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   doSearch(query);
@@ -119,17 +119,17 @@ export default function MusicSearch({ onSelectSong, isVisible, onClose }: MusicS
               {query && (
                 <button
                   onClick={() => handleQueryChange('')}
-                  className="p-1 text-slate-500 hover:text-slate-300"
+                  className="p-2 text-slate-500 hover:text-slate-300"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               )}
               <button
                 onClick={handleSearchClick}
                 disabled={isLoading || !query.trim()}
-                className="p-1.5 rounded-md bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-md bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                <Search className="w-4 h-4" />
+                <Search className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -137,14 +137,14 @@ export default function MusicSearch({ onSelectSong, isVisible, onClose }: MusicS
 
         {/* Hot Keywords */}
         {!hasSearched && !error && (
-          <div className="px-5 py-3 border-b border-white/5">
+          <div className="px-4 sm:px-5 py-3 border-b border-white/5 shrink-0">
             <p className="text-xs text-slate-500 mb-2">热门搜索</p>
             <div className="flex flex-wrap gap-2">
               {HOT_KEYWORDS.map((kw) => (
                 <button
                   key={kw}
                   onClick={() => handleSelectKeyword(kw)}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-teal-500/10 text-slate-400 hover:text-teal-300 text-xs transition-all border border-white/5 hover:border-teal-500/20"
+                  className="px-3 py-2 rounded-lg bg-white/5 hover:bg-teal-500/10 text-slate-400 hover:text-teal-300 text-sm transition-all border border-white/5 hover:border-teal-500/20"
                 >
                   {kw}
                 </button>
@@ -168,7 +168,7 @@ export default function MusicSearch({ onSelectSong, isVisible, onClose }: MusicS
         )}
 
         {/* Song List */}
-        <ScrollArea className="h-[380px]">
+        <ScrollArea className="flex-1 min-h-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
               <div className="flex items-center gap-2 text-slate-500">
@@ -200,16 +200,16 @@ export default function MusicSearch({ onSelectSong, isVisible, onClose }: MusicS
             </div>
           ) : (
             <div className="py-2">
-              <div className="px-5 py-2 text-xs text-slate-500">
+              <div className="px-4 sm:px-5 py-2 text-xs text-slate-500">
                 搜索结果：{songs.length} 首
               </div>
               {songs.map((song, index) => (
                 <button
                   key={`${song.name}-${song.artist}-${index}`}
                   onClick={() => onSelectSong(song)}
-                  className="w-full flex items-center gap-3 px-5 py-2.5 hover:bg-white/5 transition-colors group text-left"
+                  className="w-full flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-2.5 hover:bg-white/5 transition-colors group text-left min-h-[56px]"
                 >
-                  <span className={`text-xs font-mono w-6 text-center ${
+                  <span className={`text-sm font-mono w-6 text-center ${
                     index < 3 ? 'text-teal-400 font-bold' : 'text-slate-600'
                   }`}>
                     {index + 1}
@@ -219,27 +219,27 @@ export default function MusicSearch({ onSelectSong, isVisible, onClose }: MusicS
                     <img
                       src={song.pic}
                       alt={song.album}
-                      className="w-10 h-10 rounded-lg object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                      className="w-11 h-11 sm:w-10 sm:h-10 rounded-lg object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
-                      <Music className="w-4 h-4 text-slate-600" />
+                    <div className="w-11 h-11 sm:w-10 sm:h-10 rounded-lg bg-white/5 flex items-center justify-center">
+                      <Music className="w-5 h-5 sm:w-4 sm:h-4 text-slate-600" />
                     </div>
                   )}
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-200 truncate group-hover:text-teal-300 transition-colors">
+                    <p className="text-base sm:text-sm text-slate-200 truncate group-hover:text-teal-300 transition-colors">
                       {song.name}
                     </p>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">{song.artist}</p>
+                    <p className="text-sm sm:text-xs text-slate-500 truncate mt-0.5">{song.artist}</p>
                   </div>
 
-                  <div className="flex items-center gap-1 text-xs text-slate-600">
+                  <div className="hidden sm:flex items-center gap-1 text-xs text-slate-600">
                     <Clock className="w-3 h-3" />
                     <span>{formatDuration(song.duration)}</span>
                   </div>
 
-                  <ChevronRight className="w-4 h-4 text-slate-700 group-hover:text-teal-400 transition-colors" />
+                  <ChevronRight className="w-5 h-5 sm:w-4 sm:h-4 text-slate-700 group-hover:text-teal-400 transition-colors" />
                 </button>
               ))}
             </div>
@@ -247,7 +247,7 @@ export default function MusicSearch({ onSelectSong, isVisible, onClose }: MusicS
         </ScrollArea>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-white/10 text-center">
+        <div className="px-4 sm:px-5 py-3 border-t border-white/10 text-center shrink-0">
           <p className="text-xs text-slate-600">
             数据来源：Meting API · 仅供学习交流
           </p>
