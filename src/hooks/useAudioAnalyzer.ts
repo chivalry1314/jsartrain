@@ -149,6 +149,30 @@ export function useAudioAnalyzer() {
     if (thunderIntervalRef.current) { clearInterval(thunderIntervalRef.current); thunderIntervalRef.current = null; }
   }, [stopAnalysis]);
 
+  // Sync ambient rain volume with music playback state
+  const syncRainWithPlayback = useCallback((playing: boolean) => {
+    const ctx = audioContextRef.current;
+    if (!ctx) return;
+    const enabled = rainEnabledRef.current;
+    const volume = rainVolumeRef.current;
+    const target = playing && enabled ? volume : 0;
+    const windTarget = playing && enabled ? volume * rainDensityToWindVolume(rainDensityRef.current) : 0;
+    const fadeTime = playing ? 0.3 : 0.03; // fast stop, smooth start
+
+    if (rainGainRef.current) {
+      rainGainRef.current.gain.cancelScheduledValues(ctx.currentTime);
+      rainGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, fadeTime);
+    }
+    if (windGainRef.current) {
+      windGainRef.current.gain.cancelScheduledValues(ctx.currentTime);
+      windGainRef.current.gain.setTargetAtTime(windTarget, ctx.currentTime, fadeTime);
+    }
+    if (dropSoundsGainRef.current) {
+      dropSoundsGainRef.current.gain.cancelScheduledValues(ctx.currentTime);
+      dropSoundsGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, fadeTime);
+    }
+  }, []);
+
   const setupNewAudio = useCallback((audio: HTMLAudioElement): Promise<void> => {
     // Clean up previous audio
     teardownAudio();
@@ -256,30 +280,6 @@ export function useAudioAnalyzer() {
 
     return canPlayPromise;
   }, [teardownAudio, startAnalysis, stopAnalysis, syncRainWithPlayback]);
-
-  // Sync ambient rain volume with music playback state
-  const syncRainWithPlayback = useCallback((playing: boolean) => {
-    const ctx = audioContextRef.current;
-    if (!ctx) return;
-    const enabled = rainEnabledRef.current;
-    const volume = rainVolumeRef.current;
-    const target = playing && enabled ? volume : 0;
-    const windTarget = playing && enabled ? volume * rainDensityToWindVolume(rainDensityRef.current) : 0;
-    const fadeTime = playing ? 0.3 : 0.03; // fast stop, smooth start
-
-    if (rainGainRef.current) {
-      rainGainRef.current.gain.cancelScheduledValues(ctx.currentTime);
-      rainGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, fadeTime);
-    }
-    if (windGainRef.current) {
-      windGainRef.current.gain.cancelScheduledValues(ctx.currentTime);
-      windGainRef.current.gain.setTargetAtTime(windTarget, ctx.currentTime, fadeTime);
-    }
-    if (dropSoundsGainRef.current) {
-      dropSoundsGainRef.current.gain.cancelScheduledValues(ctx.currentTime);
-      dropSoundsGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, fadeTime);
-    }
-  }, []);
 
   // Start procedural rain intervals (drop sounds & thunder)
   const startRainIntervals = useCallback((ctx: AudioContext) => {
