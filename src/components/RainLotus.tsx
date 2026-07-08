@@ -55,6 +55,15 @@ interface AmbientRaindrop {
   rippleChance: number;
 }
 
+interface Cloud {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  speed: number;
+  puffs: { x: number; y: number; r: number }[];
+}
+
 export default function RainLotus({ audioState, lyrics, density = 'medium' }: RainLotusProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const p5Ref = useRef<p5 | null>(null);
@@ -70,12 +79,14 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
     let W = 0, H = 0, waterY = 0;
     const columns: RainColumn[] = [];
     const raindrops: AmbientRaindrop[] = [];
+    const clouds: Cloud[] = [];
     const ripples: Ripple[] = [];
     const splashes: Splash[] = [];
     let beatFlash = 0, lastBeat = 0;
     let lastLyricsKey = '';
     const triggeredLines = new Set<string>();
     let lastCurrentTime = 0;
+    let inLyricSection = false;
 
     // Column colors - muted palette like the video
     const COLUMN_COLORS: [number,number,number][] = [
@@ -98,6 +109,57 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
       p.textAlign(p.CENTER, p.CENTER);
       p.textFont('Noto Serif SC, serif');
       p.frameRate(60);
+      initClouds();
+    };
+
+    // ---- Clouds ----
+    const initClouds = () => {
+      clouds.length = 0;
+      const count = Math.max(3, Math.floor(W / 250));
+      for (let i = 0; i < count; i++) {
+        const w = p.random(120, 220);
+        const h = p.random(40, 70);
+        const puffCount = Math.floor(p.random(5, 9));
+        const puffs: { x: number; y: number; r: number }[] = [];
+        for (let j = 0; j < puffCount; j++) {
+          puffs.push({
+            x: p.random(-w * 0.4, w * 0.4),
+            y: p.random(-h * 0.3, h * 0.3),
+            r: p.random(h * 0.4, h * 0.8),
+          });
+        }
+        clouds.push({
+          x: p.random(W * 0.1, W * 0.9),
+          y: p.random(H * 0.02, H * 0.12),
+          w,
+          h,
+          speed: p.random(0.05, 0.15) * (Math.random() < 0.5 ? 1 : -1),
+          puffs,
+        });
+      }
+    };
+
+    const updateAndDrawClouds = () => {
+      for (const cloud of clouds) {
+        cloud.x += cloud.speed;
+        if (cloud.x > W + cloud.w) cloud.x = -cloud.w;
+        if (cloud.x < -cloud.w) cloud.x = W + cloud.w;
+
+        p.noStroke();
+        for (const puff of cloud.puffs) {
+          p.fill(180, 190, 210, 18);
+          p.ellipse(cloud.x + puff.x, cloud.y + puff.y, puff.r * 2, puff.r * 2);
+        }
+        p.fill(160, 170, 190, 10);
+        p.ellipse(cloud.x, cloud.y, cloud.w, cloud.h);
+      }
+    };
+
+    // Pick a rain start x near a cloud
+    const rainStartX = () => {
+      if (clouds.length === 0) return p.random(W * 0.2, W * 0.8);
+      const cloud = clouds[Math.floor(p.random(clouds.length))];
+      return cloud.x + p.random(-cloud.w * 0.35, cloud.w * 0.35);
     };
 
     // ---- Add rain columns for a lyric line based on density ----
@@ -212,6 +274,9 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
       p.noStroke();
       p.rect(0, 0, W, H);
 
+      // ===== CLOUDS =====
+      updateAndDrawClouds();
+
       // Water surface line
       p.stroke(30, 50, 60, 40);
       p.strokeWeight(1);
@@ -226,7 +291,6 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
       }
 
       // ===== DETECT SONG RESTART / SEEK BACK =====
-      // When currentTime jumps backward (e.g. song ended and replayed), reset lyric rain
       if (state.currentTime < lastCurrentTime - 1) {
         resetColumns();
       }
@@ -239,18 +303,26 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
         resetColumns();
       }
 
-      // ===== SPAWN COLUMNS FOR CURRENT/UPCOMING LYRICS =====
-      if (state.isPlaying && currentLyrics.length > 0) {
-        for (const line of currentLyrics) {
-          const key = line.time + '|' + line.text;
-          if (triggeredLines.has(key)) continue;
+      // ===== DETERMINE CURRENT SECTION (lyric vs instrumental) =====
+      // Find the lyric line that is currently active
+      let currentLyricIndex = -1;
+      for (let i = 0; i < currentLyrics.length; i++) {
+        const line = currentLyrics[i];
+        const nextLine = currentLyrics[i + 1];
+        if (state.currentTime >= line.time && (!nextLine || state.currentTime < nextLine.time)) {
+          currentLyricIndex = i;
+          break;
+        }
+      }
+      inLyricSection = currentLyricIndex >= 0;
 
-          // Start falling 2s before the lyric time, keep window for seek/jump
-          const timeUntil = line.time - state.currentTime;
-          if (timeUntil <= 2.0 && timeUntil > -8.0) {
-            triggeredLines.add(key);
-            addColumnsForLine(line);
-          }
+      // ===== SPAWN LYRIC RAIN DURING LYRIC SECTIONS =====
+      if (state.isPlaying && currentLyrics.length > 0 && inLyricSection) {
+        const line = currentLyrics[currentLyricIndex];
+        const key = line.time + '|' + line.text;
+        if (!triggeredLines.has(key)) {
+          triggeredLines.add(key);
+          addColumnsForLine(line);
         }
       }
 
@@ -259,7 +331,7 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
         if (columns[i].done) columns.splice(i, 1);
       }
 
-      // ===== AMBIENT RAIN (when no lyrics / instrumental parts) =====
+      // ===== AMBIENT RAIN DURING INSTRUMENTAL / NO LYRICS =====
       const density = densityRef.current;
       const rainParams = {
         light: { base: 35, speedMin: 8, speedMax: 13, lenMin: 12, lenMax: 22, widthMin: 0.5, widthMax: 1.0, tilt: 0, rippleChance: 0.6 },
@@ -267,7 +339,9 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
         heavy: { base: 170, speedMin: 14, speedMax: 22, lenMin: 5, lenMax: 12, widthMin: 1.3, widthMax: 2.6, tilt: 0.08, rippleChance: 1.0 },
       }[density];
 
-      if (state.isPlaying && currentLyrics.length === 0) {
+      // During instrumental sections or when there are no lyrics at all, show ambient rain
+      const shouldSpawnAmbient = state.isPlaying && (!inLyricSection || currentLyrics.length === 0);
+      if (shouldSpawnAmbient) {
         const energyBoost = 1 + state.overallEnergy * 0.5 + state.bassEnergy * 0.3;
         const targetCount = Math.floor(rainParams.base * energyBoost);
 
@@ -275,7 +349,7 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
           const missing = targetCount - raindrops.length;
           const toSpawn = Math.min(missing, Math.max(1, Math.floor(missing / 12)));
           for (let i = 0; i < toSpawn; i++) {
-            const startX = p.random(W * 0.15, W * 0.85);
+            const startX = rainStartX();
             raindrops.push({
               x: startX,
               y: p.random(-H, -20),
@@ -484,6 +558,7 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
       H = containerRef.current?.clientHeight || p.windowHeight;
       p.resizeCanvas(W, H);
       waterY = H * 0.78;
+      initClouds();
     };
   }, []);
 
