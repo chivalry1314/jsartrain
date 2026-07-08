@@ -234,6 +234,7 @@ export default function Home() {
         hasLyrics={hasLyrics}
         hasAudio={hasAudio}
         density={density}
+        immersive={immersive}
         onAudioFile={handleAudioFile}
         onLyricsFile={handleLyricsFile}
         onPlay={play}
