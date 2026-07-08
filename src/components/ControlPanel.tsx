@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Play, Pause, Upload, Music, FileText, Volume2, VolumeX, Maximize2, CloudRain } from 'lucide-react';
+import { Play, Pause, Upload, Music, FileText, Volume2, VolumeX, Maximize2, CloudRain, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 
@@ -23,6 +23,7 @@ interface ControlPanelProps {
   onVolumeChange: (volume: number) => void;
   onDensityChange: (density: 'light' | 'medium' | 'heavy') => void;
   onToggleImmersive: () => void;
+  onShowMusicSearch: () => void;
   rainEnabled: boolean;
   rainVolume: number;
   onRainToggle: (enabled: boolean) => void;
@@ -43,6 +44,7 @@ export default function ControlPanel({
   onVolumeChange,
   onDensityChange,
   onToggleImmersive,
+  onShowMusicSearch,
   rainEnabled,
   rainVolume,
   onRainToggle,
@@ -321,7 +323,7 @@ export default function ControlPanel({
               <h2 className="text-xl font-semibold text-slate-100 mb-2">雨音 · RainTune</h2>
               <p className="text-sm text-slate-400 mb-6 leading-relaxed">
                 上传音乐文件开始体验。雨滴会随音乐节奏落下，<br />
-                击中荷叶时激起涟漪与歌词。
+                击中地面时激起涟漪与歌词。
               </p>
               <div className="flex flex-col gap-3 text-xs text-slate-500">
                 <div className="flex items-center gap-2 justify-center">
@@ -333,13 +335,22 @@ export default function ControlPanel({
                   <span>可导入 LRC 歌词文件（可选）</span>
                 </div>
               </div>
-              <Button
-                onClick={() => audioInputRef.current?.click()}
-                className="mt-6 bg-teal-600 hover:bg-teal-500 text-white gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                选择音乐文件
-              </Button>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  onClick={() => audioInputRef.current?.click()}
+                  className="bg-teal-600 hover:bg-teal-500 text-white gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  选择音乐文件
+                </Button>
+                <Button
+                  onClick={onShowMusicSearch}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
+                >
+                  <Headphones className="w-4 h-4" />
+                  在线选歌
+                </Button>
+              </div>
             </div>
           </div>
         </div>

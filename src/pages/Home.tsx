@@ -243,6 +243,7 @@ export default function Home() {
         onVolumeChange={setVolume}
         onDensityChange={handleDensityChange}
         onToggleImmersive={() => setImmersive(true)}
+        onShowMusicSearch={() => setShowMusicSearch(true)}
         rainEnabled={rainEnabled}
         rainVolume={rainVolume}
         onRainToggle={handleRainToggle}
