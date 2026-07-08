@@ -265,15 +265,19 @@ export function useAudioAnalyzer() {
     const volume = rainVolumeRef.current;
     const target = playing && enabled ? volume : 0;
     const windTarget = playing && enabled ? volume * rainDensityToWindVolume(rainDensityRef.current) : 0;
+    const fadeTime = playing ? 0.3 : 0.03; // fast stop, smooth start
 
     if (rainGainRef.current) {
-      rainGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, 0.3);
+      rainGainRef.current.gain.cancelScheduledValues(ctx.currentTime);
+      rainGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, fadeTime);
     }
     if (windGainRef.current) {
-      windGainRef.current.gain.setTargetAtTime(windTarget, ctx.currentTime, 0.3);
+      windGainRef.current.gain.cancelScheduledValues(ctx.currentTime);
+      windGainRef.current.gain.setTargetAtTime(windTarget, ctx.currentTime, fadeTime);
     }
     if (dropSoundsGainRef.current) {
-      dropSoundsGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, 0.3);
+      dropSoundsGainRef.current.gain.cancelScheduledValues(ctx.currentTime);
+      dropSoundsGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, fadeTime);
     }
   }, []);
 
