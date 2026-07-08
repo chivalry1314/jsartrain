@@ -61,7 +61,7 @@ interface Cloud {
   w: number;
   h: number;
   speed: number;
-  puffs: { x: number; y: number; r: number }[];
+  puffs: { x: number; y: number; r: number; alpha: number }[];
 }
 
 export default function RainLotus({ audioState, lyrics, density = 'medium' }: RainLotusProps) {
@@ -112,54 +112,62 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
       initClouds();
     };
 
-    // ---- Clouds ----
+    // ---- Clouds (centered, soft, p5-rendered) ----
+    const CENTER_MIN = 0.22;
+    const CENTER_MAX = 0.78;
+
     const initClouds = () => {
       clouds.length = 0;
-      const count = Math.max(3, Math.floor(W / 250));
+      const count = Math.max(4, Math.floor(W / 220));
       for (let i = 0; i < count; i++) {
-        const w = p.random(120, 220);
-        const h = p.random(40, 70);
-        const puffCount = Math.floor(p.random(5, 9));
-        const puffs: { x: number; y: number; r: number }[] = [];
+        const w = p.random(140, 260);
+        const h = p.random(45, 80);
+        const puffCount = Math.floor(p.random(8, 16));
+        const puffs: { x: number; y: number; r: number; alpha: number }[] = [];
         for (let j = 0; j < puffCount; j++) {
+          const angle = p.random(p.TWO_PI);
+          const dist = p.random(w * 0.45);
           puffs.push({
-            x: p.random(-w * 0.4, w * 0.4),
-            y: p.random(-h * 0.3, h * 0.3),
-            r: p.random(h * 0.4, h * 0.8),
+            x: Math.cos(angle) * dist,
+            y: p.random(-h * 0.35, h * 0.35) + Math.sin(angle) * dist * 0.3,
+            r: p.random(h * 0.35, h * 0.9),
+            alpha: p.random(6, 18),
           });
         }
         clouds.push({
-          x: p.random(W * 0.1, W * 0.9),
-          y: p.random(H * 0.02, H * 0.12),
+          x: p.random(W * CENTER_MIN, W * CENTER_MAX),
+          y: p.random(H * 0.03, H * 0.13),
           w,
           h,
-          speed: p.random(0.05, 0.15) * (Math.random() < 0.5 ? 1 : -1),
+          speed: p.random(0.03, 0.08) * (Math.random() < 0.5 ? 1 : -1),
           puffs,
         });
       }
     };
 
     const updateAndDrawClouds = () => {
+      p.noStroke();
       for (const cloud of clouds) {
         cloud.x += cloud.speed;
-        if (cloud.x > W + cloud.w) cloud.x = -cloud.w;
-        if (cloud.x < -cloud.w) cloud.x = W + cloud.w;
+        if (cloud.x > W * CENTER_MAX + cloud.w * 0.5) cloud.x = W * CENTER_MIN - cloud.w * 0.5;
+        if (cloud.x < W * CENTER_MIN - cloud.w * 0.5) cloud.x = W * CENTER_MAX + cloud.w * 0.5;
 
-        p.noStroke();
         for (const puff of cloud.puffs) {
-          p.fill(180, 190, 210, 18);
-          p.ellipse(cloud.x + puff.x, cloud.y + puff.y, puff.r * 2, puff.r * 2);
+          p.fill(165, 175, 195, puff.alpha);
+          p.ellipse(cloud.x + puff.x, cloud.y + puff.y, puff.r * 2, puff.r * 1.7);
         }
-        p.fill(160, 170, 190, 10);
-        p.ellipse(cloud.x, cloud.y, cloud.w, cloud.h);
+        // soft core
+        p.fill(150, 160, 180, 8);
+        p.ellipse(cloud.x, cloud.y, cloud.w * 0.8, cloud.h * 0.7);
       }
     };
 
-    // Pick a rain start x near a cloud
+    // Pick a rain start x near a cloud, constrained to center area
     const rainStartX = () => {
-      if (clouds.length === 0) return p.random(W * 0.2, W * 0.8);
+      if (clouds.length === 0) return p.random(W * CENTER_MIN, W * CENTER_MAX);
       const cloud = clouds[Math.floor(p.random(clouds.length))];
-      return cloud.x + p.random(-cloud.w * 0.35, cloud.w * 0.35);
+      const x = cloud.x + p.random(-cloud.w * 0.35, cloud.w * 0.35);
+      return Math.max(W * CENTER_MIN, Math.min(W * CENTER_MAX, x));
     };
 
     // ---- Add rain columns for a lyric line based on density ----
@@ -339,11 +347,12 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
         heavy: { base: 170, speedMin: 14, speedMax: 22, lenMin: 5, lenMax: 12, widthMin: 1.3, widthMax: 2.6, tilt: 0.08, rippleChance: 1.0 },
       }[density];
 
-      // During instrumental sections or when there are no lyrics at all, show ambient rain
-      const shouldSpawnAmbient = state.isPlaying && (!inLyricSection || currentLyrics.length === 0);
-      if (shouldSpawnAmbient) {
+      // Ambient rain: full during instrumental, light background during lyric sections
+      const isInstrumental = state.isPlaying && (!inLyricSection || currentLyrics.length === 0);
+      const ambientIntensity = isInstrumental ? 1 : 0.25;
+      if (state.isPlaying && ambientIntensity > 0) {
         const energyBoost = 1 + state.overallEnergy * 0.5 + state.bassEnergy * 0.3;
-        const targetCount = Math.floor(rainParams.base * energyBoost);
+        const targetCount = Math.floor(rainParams.base * energyBoost * ambientIntensity);
 
         if (raindrops.length < targetCount) {
           const missing = targetCount - raindrops.length;
@@ -355,10 +364,10 @@ export default function RainLotus({ audioState, lyrics, density = 'medium' }: Ra
               y: p.random(-H, -20),
               speed: p.random(rainParams.speedMin, rainParams.speedMax) * (1 + state.bassEnergy * 0.25),
               length: p.random(rainParams.lenMin, rainParams.lenMax),
-              opacity: p.random(0.25, 0.75),
-              width: p.random(rainParams.widthMin, rainParams.widthMax),
+              opacity: p.random(0.2, 0.6),
+              width: p.random(rainParams.widthMin, rainParams.widthMax) * (isInstrumental ? 1 : 0.8),
               tilt: rainParams.tilt,
-              rippleChance: rainParams.rippleChance,
+              rippleChance: rainParams.rippleChance * ambientIntensity,
             });
           }
         }
