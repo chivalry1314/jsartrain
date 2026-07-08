@@ -155,7 +155,7 @@ export default function Home() {
           {/* Title */}
           <div className="pointer-events-auto hidden sm:block">
             <h1 className="text-sm font-medium text-slate-300/80 tracking-wider">
-              雨滴荷叶
+              雨音 · RainTune
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
               音乐可视化

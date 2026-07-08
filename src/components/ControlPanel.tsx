@@ -318,7 +318,7 @@ export default function ControlPanel({
               <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-teal-500/10 flex items-center justify-center">
                 <Music className="w-8 h-8 text-teal-400" />
               </div>
-              <h2 className="text-xl font-semibold text-slate-100 mb-2">雨滴荷叶音乐可视化</h2>
+              <h2 className="text-xl font-semibold text-slate-100 mb-2">雨音 · RainTune</h2>
               <p className="text-sm text-slate-400 mb-6 leading-relaxed">
                 上传音乐文件开始体验。雨滴会随音乐节奏落下，<br />
                 击中荷叶时激起涟漪与歌词。
