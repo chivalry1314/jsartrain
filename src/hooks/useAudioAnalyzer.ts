@@ -180,16 +180,19 @@ export function useAudioAnalyzer() {
     const onPlay = () => {
       setAudioState(prev => ({ ...prev, isPlaying: true }));
       startAnalysis();
+      syncRainWithPlayback(true);
     };
 
     const onPause = () => {
       setAudioState(prev => ({ ...prev, isPlaying: false }));
       stopAnalysis();
+      syncRainWithPlayback(false);
     };
 
     const onEnded = () => {
       setAudioState(prev => ({ ...prev, isPlaying: false, currentTime: 0 }));
       stopAnalysis();
+      syncRainWithPlayback(false);
     };
 
     const onTimeUpdate = () => {
@@ -252,7 +255,27 @@ export function useAudioAnalyzer() {
     createRainSound(ctx);
 
     return canPlayPromise;
-  }, [teardownAudio, startAnalysis, stopAnalysis]);
+  }, [teardownAudio, startAnalysis, stopAnalysis, syncRainWithPlayback]);
+
+  // Sync ambient rain volume with music playback state
+  const syncRainWithPlayback = useCallback((playing: boolean) => {
+    const ctx = audioContextRef.current;
+    if (!ctx) return;
+    const enabled = rainEnabledRef.current;
+    const volume = rainVolumeRef.current;
+    const target = playing && enabled ? volume : 0;
+    const windTarget = playing && enabled ? volume * rainDensityToWindVolume(rainDensityRef.current) : 0;
+
+    if (rainGainRef.current) {
+      rainGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, 0.3);
+    }
+    if (windGainRef.current) {
+      windGainRef.current.gain.setTargetAtTime(windTarget, ctx.currentTime, 0.3);
+    }
+    if (dropSoundsGainRef.current) {
+      dropSoundsGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, 0.3);
+    }
+  }, []);
 
   // Start procedural rain intervals (drop sounds & thunder)
   const startRainIntervals = useCallback((ctx: AudioContext) => {
@@ -282,7 +305,7 @@ export function useAudioAnalyzer() {
     if (rainGainRef.current) return;
 
     const gain = ctx.createGain();
-    gain.gain.value = rainEnabledRef.current ? rainVolumeRef.current : 0;
+    gain.gain.value = 0;
     gain.connect(ctx.destination);
     rainGainRef.current = gain;
 
@@ -336,7 +359,7 @@ export function useAudioAnalyzer() {
 
     // Drop sounds layer
     const dropGain = ctx.createGain();
-    dropGain.gain.value = rainEnabledRef.current ? rainVolumeRef.current : 0;
+    dropGain.gain.value = 0;
     dropGain.connect(ctx.destination);
     dropSoundsGainRef.current = dropGain;
 
@@ -456,28 +479,16 @@ export function useAudioAnalyzer() {
   // Adjust ambient rain volume
   const setRainVolume = useCallback((volume: number) => {
     rainVolumeRef.current = volume;
-    const ctx = audioContextRef.current;
-    if (!ctx) return;
-    const target = rainEnabledRef.current ? volume : 0;
-    if (rainGainRef.current) {
-      rainGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, 0.05);
-    }
-    if (windGainRef.current) {
-      windGainRef.current.gain.setTargetAtTime(target * rainDensityToWindVolume(rainDensityRef.current), ctx.currentTime, 0.05);
-    }
-    if (dropSoundsGainRef.current) {
-      dropSoundsGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, 0.05);
-    }
-  }, []);
+    const isPlaying = audioRef.current ? !audioRef.current.paused : false;
+    syncRainWithPlayback(isPlaying);
+  }, [syncRainWithPlayback]);
 
   // Toggle ambient rain on/off
   const toggleRain = useCallback((enabled: boolean) => {
     rainEnabledRef.current = enabled;
-    const ctx = audioContextRef.current;
-    if (rainGainRef.current && ctx) {
-      rainGainRef.current.gain.setTargetAtTime(enabled ? rainVolumeRef.current : 0, ctx.currentTime, 0.1);
-    }
-  }, []);
+    const isPlaying = audioRef.current ? !audioRef.current.paused : false;
+    syncRainWithPlayback(isPlaying);
+  }, [syncRainWithPlayback]);
 
   // Change rain density (affects both sound timbre and future rain generation)
   const setRainDensity = useCallback((density: 'light' | 'medium' | 'heavy') => {
@@ -490,10 +501,9 @@ export function useAudioAnalyzer() {
     if (windFilterRef.current) {
       windFilterRef.current.frequency.setTargetAtTime(rainDensityToWindFreq(density), ctx.currentTime, 0.3);
     }
-    if (windGainRef.current) {
-      windGainRef.current.gain.setTargetAtTime(rainEnabledRef.current ? rainVolumeRef.current * rainDensityToWindVolume(density) : 0, ctx.currentTime, 0.3);
-    }
-  }, []);
+    const isPlaying = audioRef.current ? !audioRef.current.paused : false;
+    syncRainWithPlayback(isPlaying);
+  }, [syncRainWithPlayback]);
 
   // Initialize from a File (local upload)
   const initAudio = useCallback((file: File) => {
